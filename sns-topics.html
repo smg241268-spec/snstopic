@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SNSトピック管理｜プロンプト生成</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Old+Mincho:wght@900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F5F7FA; --sheet:#FFFFFF; --ink:#1D2836; --sub:#5F6B7A; --line:#D9DFE7; --soft:#EEF2F6;
+  --accent:#2F6FD0; --focus:#2F6FD0; --done:#2E8B57; --warn:#B4472B;
+  color-scheme:light; box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#141A22; --sheet:#1C242F; --ink:#E6EBF1; --sub:#9AA6B4; --line:#334050; --soft:#232D3A;
+    --accent:#6E9FEA; --focus:#7FA9EE; --done:#5DBB86; --warn:#EE8A6B; color-scheme:dark;
+  }
+}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;font-size:16px;line-height:1.7}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 80px}
+h1{font-family:"Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",serif;font-weight:900;font-size:clamp(26px,5vw,36px);line-height:1.3;margin:0 0 6px}
+.lead{color:var(--sub);margin:0 0 20px}
+h2{font-size:19px;margin:0 0 4px}
+.desc{color:var(--sub);font-size:14px;margin:0 0 12px}
+section{background:var(--sheet);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:22px}
+button{font:inherit;cursor:pointer}
+.btn{font-weight:700;border-radius:6px;padding:8px 14px;border:1.5px solid var(--ink);background:var(--ink);color:var(--sheet);font-size:14px}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.small{padding:4px 10px;font-size:13px}
+.filebtn{position:relative;overflow:hidden;display:inline-block}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.bar .sp{flex:1}
+.count{font-size:13px;color:var(--sub)}
+
+/* 表 */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:960px;font-size:14px}
+th{position:sticky;top:0;background:var(--soft);color:var(--sub);font-size:12px;text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{border-bottom:1px solid var(--line);padding:4px;vertical-align:top}
+tr:last-child td{border-bottom:0}
+td input,td select,td textarea{width:100%;font:inherit;font-size:14px;color:var(--ink);background:transparent;border:1px solid transparent;border-radius:4px;padding:6px}
+td input:hover,td select:hover,td textarea:hover{border-color:var(--line)}
+td input:focus,td select:focus,td textarea:focus{background:var(--paper);border-color:var(--line)}
+td textarea{resize:vertical;min-height:38px;line-height:1.5;field-sizing:content;max-height:200px}
+.c-date{width:150px}.c-pf{width:120px}.c-url{width:200px}.c-img{width:84px}.c-st{width:100px}.c-del{width:56px;text-align:center}
+.del{background:transparent;border:0;color:var(--sub);font-size:13px;padding:6px}
+.del:hover{color:var(--warn)}
+tr.today td{background:var(--soft)}
+.st-生成済 td.st select{color:var(--accent);font-weight:700}
+.st-投稿済 td.st select{color:var(--done);font-weight:700}
+.empty{padding:28px;text-align:center;color:var(--sub)}
+
+/* プロンプト */
+label.f{display:block;font-weight:700;font-size:14px;margin:12px 0 4px}
+.sel,.extra{width:100%;font:inherit;font-size:15px;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:9px 10px}
+.extra{min-height:150px;resize:vertical}
+.summary{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:10px 12px;font-size:14px;margin-top:10px}
+.summary b{color:var(--sub);font-weight:700;margin-right:6px}
+.summary div+div{margin-top:4px}
+.out{margin-top:16px;display:none}
+.out.on{display:block}
+.outhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.outhead span{font-size:14px;color:var(--sub)}
+pre{margin:0;white-space:pre-wrap;word-break:break-word;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:14px;font-size:14px;line-height:1.7;max-height:480px;overflow:auto;font-family:inherit}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--sheet);padding:8px 16px;border-radius:6px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+.toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>SNSトピック管理</h1>
+  <p class="lead">ネタのストック表から、Claudeに貼り付けるマスタープロンプトを作ります。入力内容はこのブラウザに自動で保存されます。</p>
+
+  <section aria-labelledby="h-topics">
+    <h2 id="h-topics">① トピック管理</h2>
+    <p class="desc">表のマスをそのまま書き換えられます。消えると困るので、ときどきCSVで書き出しておいてください。</p>
+    <div class="bar">
+      <button class="btn" id="add">＋ 行を追加</button>
+      <button class="btn ghost" id="sort">日付順に並べる</button>
+      <span class="sp"></span>
+      <span class="count" id="count"></span>
+      <button class="btn ghost small" id="export">CSVで書き出す</button>
+      <span class="btn ghost small filebtn">CSVを読み込む<input type="file" accept=".csv,text/csv" id="import" aria-label="CSVを読み込む"></span>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th class="c-date">投稿予定日</th><th class="c-pf">媒体</th><th>トピック内容・概要</th>
+          <th class="c-url">参考URL</th><th class="c-img">画像</th><th class="c-st">ステータス</th><th class="c-del"><span style="position:absolute;left:-9999px">削除</span></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-prompt">
+    <h2 id="h-prompt">② プロンプト生成</h2>
+    <p class="desc">トピックを選び、今週の学びやコードなどを書き足して「プロンプトを生成」を押してください。</p>
+    <label class="f" for="pick">トピック</label>
+    <select class="sel" id="pick"></select>
+    <div class="summary" id="summary"></div>
+    <label class="f" for="extra">追加インプット情報</label>
+    <textarea class="extra" id="extra" placeholder="今週の学び、コード、感想など"></textarea>
+    <div class="bar" style="margin-top:12px"><button class="btn" id="gen">プロンプトを生成</button></div>
+    <div class="out" id="out">
+      <div class="outhead"><span>コピーしてClaudeに貼り付けてください。</span><button class="btn small" id="copy">コピー</button></div>
+      <pre id="prompt" tabindex="0"></pre>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const PLATFORMS=["note","X","Instagram","LinkedIn"];
+const STATUSES=["未着手","生成済","投稿済"];
+const KEY="snsTopics:v1";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
+const today=(()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`})();
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("on"),2200)}
+
+/* ---------- 保存 ---------- */
+let topics=[];
+function load(){try{topics=JSON.parse(localStorage.getItem(KEY)||"[]")}catch(_){topics=[]}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(topics))}catch(_){toast("保存できませんでした。CSVで書き出しておいてください")}}
+function blank(){return {id:uid(),topic_content:"",post_date:"",sns_platform:"note",file_url:"",needs_image:false,status:"未着手",created_at:new Date().toISOString()}}
+
+/* ---------- 表 ---------- */
+function renderTable(){
+  $("count").textContent=`${topics.length}件`;
+  if(!topics.length){$("rows").innerHTML=`<tr><td colspan="7" class="empty">「＋ 行を追加」からトピックを登録してください。</td></tr>`;return}
+  $("rows").innerHTML=topics.map(t=>`<tr data-id="${esc(t.id)}" class="st-${esc(t.status)}${t.post_date===today?" today":""}">
+    <td><input type="date" data-f="post_date" value="${esc(t.post_date)}" aria-label="投稿予定日"></td>
+    <td><select data-f="sns_platform" aria-label="媒体">${PLATFORMS.map(p=>`<option${p===t.sns_platform?" selected":""}>${p}</option>`).join("")}</select></td>
+    <td><textarea data-f="topic_content" rows="1" aria-label="トピック内容・概要" placeholder="トピックの内容">${esc(t.topic_content)}</textarea></td>
+    <td><input type="url" data-f="file_url" value="${esc(t.file_url)}" placeholder="https://" aria-label="参考URL"></td>
+    <td><select data-f="needs_image" aria-label="画像プロンプト"><option value="0"${t.needs_image?"":" selected"}>なし</option><option value="1"${t.needs_image?" selected":""}>あり</option></select></td>
+    <td class="st"><select data-f="status" aria-label="ステータス">${STATUSES.map(s=>`<option${s===t.status?" selected":""}>${s}</option>`).join("")}</select></td>
+    <td class="c-del"><button class="del" data-del aria-label="この行を削除">削除</button></td></tr>`).join("");
+}
+function updateFrom(el){
+  const tr=el.closest("tr"), t=topics.find(x=>x.id===tr.dataset.id); if(!t) return;
+  const f=el.dataset.f;
+  t[f]= f==="needs_image" ? el.value==="1" : el.value;
+  if(f==="status") tr.className=`st-${t.status}${t.post_date===today?" today":""}`;
+  if(f==="post_date") tr.classList.toggle("today",t.post_date===today);
+  save(); renderPick();
+}
+$("rows").addEventListener("input",e=>{if(e.target.dataset.f)updateFrom(e.target)});
+$("rows").addEventListener("change",e=>{if(e.target.dataset.f)updateFrom(e.target)});
+$("rows").addEventListener("click",e=>{
+  const b=e.target.closest("[data-del]"); if(!b) return;
+  const id=b.closest("tr").dataset.id, t=topics.find(x=>x.id===id);
+  if(!confirm(`「${(t.topic_content||"（内容なし）").slice(0,30)}」を削除しますか？`)) return;
+  topics=topics.filter(x=>x.id!==id); save(); renderAll(); toast("削除しました");
+});
+$("add").addEventListener("click",()=>{
+  const t=blank(); topics.push(t); save(); renderAll();
+  document.querySelector(`tr[data-id="${t.id}"] textarea`)?.focus();
+});
+$("sort").addEventListener("click",()=>{
+  topics.sort((a,b)=>(a.post_date||"9999").localeCompare(b.post_date||"9999")); save(); renderAll(); toast("日付順に並べました");
+});
+
+/* ---------- CSV ---------- */
+const CSV_COLS=["id","post_date","sns_platform","topic_content","file_url","needs_image","status","created_at"];
+function toCsv(){
+  const q=v=>{const s=String(v??"");return /[",\n\r]/.test(s)?`"${s.replace(/"/g,'""')}"`:s};
+  return "\ufeff"+[CSV_COLS.join(","),...topics.map(t=>CSV_COLS.map(c=>q(c==="needs_image"?(t[c]?"TRUE":"FALSE"):t[c])).join(","))].join("\r\n");
+}
+function parseCsv(text){
+  text=text.replace(/^\ufeff/,""); const rows=[]; let row=[], cell="", q=false;
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cell+='"';i++} else q=false } else cell+=c }
+    else if(c==='"') q=true;
+    else if(c===","){row.push(cell);cell=""}
+    else if(c==="\n"||c==="\r"){ if(c==="\r"&&text[i+1]==="\n")i++; row.push(cell);rows.push(row);row=[];cell="" }
+    else cell+=c;
+  }
+  if(cell||row.length){row.push(cell);rows.push(row)}
+  return rows.filter(r=>r.some(x=>x!==""));
+}
+$("export").addEventListener("click",()=>{
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([toCsv()],{type:"text/csv"}));
+  a.download=`sns-topics-${today}.csv`; a.click(); URL.revokeObjectURL(a.href);
+});
+$("import").addEventListener("change",async e=>{
+  const f=e.target.files[0]; e.target.value=""; if(!f) return;
+  try{
+    const rows=parseCsv(await f.text()); const head=rows.shift().map(h=>h.trim());
+    if(!head.includes("topic_content")) throw new Error("no column");
+    const list=rows.map(r=>{const o=blank(); head.forEach((h,i)=>{if(CSV_COLS.includes(h)&&r[i]!==undefined)o[h]=r[i]});
+      o.needs_image=/^(true|1|あり)$/i.test(String(o.needs_image));
+      if(!PLATFORMS.includes(o.sns_platform)) o.sns_platform="note";
+      if(!STATUSES.includes(o.status)) o.status="未着手";
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(o.post_date)) o.post_date="";
+      if(!o.id) o.id=uid(); return o});
+    if(topics.length&&!confirm(`今の${topics.length}件を、読み込んだ${list.length}件に置き換えますか？`)) return;
+    topics=list; save(); renderAll(); toast(`${list.length}件を読み込みました`);
+  }catch(err){console.error(err);toast("読み込めませんでした。このページで書き出したCSVか確かめてください")}
+});
+
+/* ---------- プロンプト ---------- */
+function label(t){
+  const d=t.post_date?`${+t.post_date.slice(5,7)}/${+t.post_date.slice(8,10)}`:"日付未定";
+  return `${d}｜${t.sns_platform}｜${t.status}｜${(t.topic_content||"（内容なし）").replace(/\s+/g," ").slice(0,40)}`;
+}
+function current(){return topics.find(x=>x.id===$("pick").value)}
+function renderPick(){
+  const keep=$("pick").value;
+  $("pick").innerHTML=topics.length?topics.map(t=>`<option value="${esc(t.id)}">${esc(label(t))}</option>`).join(""):`<option value="">トピックがありません</option>`;
+  if(topics.some(t=>t.id===keep)) $("pick").value=keep;
+  const t=current();
+  $("summary").innerHTML=t?`<div><b>概要</b>${esc(t.topic_content||"（未入力）")}</div><div><b>参考URL</b>${esc(t.file_url||"（なし）")}</div><div><b>画像プロンプト</b>${t.needs_image?"あり":"なし"}</div>`:"まず①でトピックを登録してください。";
+  $("gen").disabled=!t;
+}
+$("pick").addEventListener("change",()=>{renderPick();$("out").classList.remove("on")});
+function buildPrompt(t,extra){
+  const lines=[
+"あなたは「上級マーケターへの修行中」として発信している現役大学生クリエイターです。",
+"以下の情報を元に、私のSNS運用に必要なコンテンツを一括で出力してください。",
+"",
+"【対象トピック】",
+`- 概要：${t.topic_content||"（未入力）"}`,
+`- 参考URL：${t.file_url||"（なし）"}`,
+`- 追加インプット情報：${extra.trim()||"（なし）"}`,
+"",
+"【出力要件】",
+"2. X（旧Twitter）用ポスト（noteへの誘導1件＋リンクなしの独立したノウハウ140字を3パターン）",
+"3. LinkedIn用ビジネスポスト（B2B SaaSキャリア視点での考察を含める）",
+"4. Instagram用スライド構成（全6〜7枚のカルーセル用に文字を割り振り）"];
+  if(t.needs_image) lines.push("5. Geminiに投げるための、noteヘッダー画像およびInstagram背景画像の生成プロンプト");
+  return lines.join("\n");
+}
+$("gen").addEventListener("click",()=>{
+  const t=current(); if(!t) return;
+  $("prompt").textContent=buildPrompt(t,$("extra").value);
+  $("out").classList.add("on");
+  if(t.status==="未着手"){t.status="生成済";save();renderTable();renderPick()}
+  $("out").scrollIntoView({behavior:"smooth",block:"nearest"});
+});
+$("copy").addEventListener("click",async()=>{
+  const text=$("prompt").textContent;
+  try{await navigator.clipboard.writeText(text);toast("コピーしました")}
+  catch(_){const r=document.createRange();r.selectNodeContents($("prompt"));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("選択された文字をコピーしてください")}
+});
+
+function renderAll(){renderTable();renderPick()}
+load(); renderAll();
+</script>
+</body>
+</html>
